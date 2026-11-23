@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Founder Email Opener</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --background: light-dark(#f1f4ef, #151b18);
+      --paper: light-dark(#fff, #202923);
+      --toolbar: light-dark(#f7f9f6, #26302a);
+      --ink: light-dark(#172b22, #f0f6f0);
+      --muted: light-dark(#52675b, #b0c1b5);
+      --line: light-dark(#d3ded4, #405047);
+      --accent: light-dark(#08634e, #8ae5c4);
+      --on-accent: light-dark(#fff, #113227);
+      --danger: light-dark(#983b3b, #ffb9b4);
+      --danger-bg: light-dark(#fff5f2, #382724);
+      font: 400 16px/1.55 system-ui, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: var(--background); color: var(--ink); }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: wait; opacity: .7; }
+    a:focus-visible, button:focus-visible, input:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 3px;
+    }
+    main { margin: 0 auto; max-width: 1050px; padding: clamp(30px, 7vw, 94px) clamp(20px, 5vw, 54px) 48px; }
+    h1, h2, p { margin: 0; }
+    h1 { font: 400 clamp(37px, 5.7vw, 68px)/1.05 Georgia, serif; letter-spacing: -.055em; }
+    .subtitle { color: var(--muted); margin-top: 13px; }
+    form { margin-top: 35px; }
+    .form-header {
+      align-items: baseline;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 12px;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    label { font-size: 14px; font-weight: 650; }
+    .example {
+      background: transparent;
+      border: 0;
+      border-radius: 3px;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 30px;
+      padding: 4px 0 4px 8px;
+    }
+    .example:hover { text-decoration: underline; text-underline-offset: 3px; }
+    .fields { display: flex; flex-wrap: wrap; gap: 10px; }
+    input {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: var(--ink);
+      flex: 1 1 230px;
+      min-width: 0;
+      min-height: 50px;
+      padding: 11px 14px;
+    }
+    input::placeholder { color: var(--muted); opacity: 1; }
+    .generate {
+      background: var(--accent);
+      border: 1px solid transparent;
+      border-radius: 9px;
+      color: var(--on-accent);
+      font-weight: 650;
+      min-height: 50px;
+      min-width: 166px;
+      padding: 10px 16px;
+    }
+    .feedback { margin-top: 23px; }
+    .loading {
+      align-items: center;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      display: flex;
+      gap: 14px;
+      padding: 17px 20px;
+    }
+    .spinner {
+      animation: spin .85s linear infinite;
+      border: 2px solid var(--line);
+      border-radius: 50%;
+      border-top-color: var(--accent);
+      flex: 0 0 20px;
+      height: 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .spinner { display: none; } }
+    .error {
+      background: var(--danger-bg);
+      border-radius: 9px;
+      color: var(--danger);
+      padding: 13px 16px;
+    }
+    .results {
+      align-items: start;
+      display: grid;
+      gap: clamp(20px, 4vw, 37px);
+      grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+      margin-top: 31px;
+    }
+    .draft {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      min-width: 0;
+    }
+    .draft-header {
+      align-items: center;
+      background: var(--toolbar);
+      border-bottom: 1px solid var(--line);
+      border-radius: 12px 12px 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      justify-content: space-between;
+      padding: 10px clamp(16px, 3vw, 24px);
+    }
+    h2 { color: var(--ink); font-size: 15px; font-weight: 700; }
+    .copy {
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      inline-size: 118px;
+      min-height: 38px;
+      padding: 7px 11px;
+      white-space: nowrap;
+    }
+    .copy:hover, .copy[data-copied] { border-color: var(--accent); color: var(--accent); }
+    .lines {
+      font: 400 16px/1.55 Arial, sans-serif;
+      overflow-wrap: anywhere;
+      padding: clamp(16px, 3vw, 24px);
+      white-space: pre-wrap;
+    }
+    .copy-message { color: var(--muted); font-size: 13px; padding: 0 16px 13px; }
+    .visually-hidden {
+      clip-path: inset(50%);
+      height: 1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
+    .evidence { min-width: 0; padding-top: 10px; }
+    .evidence-header { align-items: baseline; display: flex; flex-wrap: wrap; gap: 8px; }
+    .source-count { color: var(--muted); font-size: 12px; }
+    .source-list { list-style: none; margin: 13px 0 0; padding: 0; }
+    .source-list li + li { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 15px; }
+    .source-list a { color: var(--accent); font-size: 14px; font-weight: 650; overflow-wrap: anywhere; text-underline-offset: 3px; }
+    .external-mark { margin-inline-start: 5px; }
+    .source-address { color: var(--muted); display: block; font-size: 12px; overflow-wrap: anywhere; }
+    blockquote { border-inline-start: 2px solid var(--line); color: var(--muted); font-size: 13px; margin: 9px 0 0; overflow-wrap: anywhere; padding-inline-start: 11px; }
+    .source-footer { margin-top: 28px; }
+    .source-footer a { color: var(--muted); font-size: 13px; text-underline-offset: 3px; }
+    .source-footer a:hover { color: var(--accent); }
+    @media (max-width: 650px) {
+      .results { grid-template-columns: minmax(0, 1fr); }
+      .evidence { padding-top: 0; }
+    }
+    @media (max-width: 440px) {
+      .generate { flex-basis: 100%; }
+    }
+    @media (pointer: coarse) {
+      .copy, .example, .source-list a { min-height: 44px; }
+      .source-list a { align-items: center; display: inline-flex; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Founder email opener</h1>
+      <p class="subtitle">Draft three lines grounded in a company’s website.</p>
+    </header>
+
+    <form id="opener-form">
+      <div class="form-header">
+        <label for="website">Company website</label>
+        {% if example_website %}<button class="example" id="example" type="button" data-website="{{ example_website }}">Try an example</button>{% endif %}
+      </div>
+      <div class="fields">
+        <input id="website" name="website" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder="company.com" maxlength="2048" required>
+        <button class="generate" id="generate" type="submit">Generate opener</button>
+      </div>
+    </form>
+
+    <section class="feedback loading" id="loading" role="status" hidden>
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Reading the website and drafting your opener…</p>
+    </section>
+    <p class="feedback error" id="error" role="alert" hidden></p>
+
+    <div class="results" id="results" hidden>
+      <section class="draft" aria-labelledby="draft-heading">
+        <div class="draft-header">
+          <h2 id="draft-heading">Email preview</h2>
+          <button class="copy" id="copy" type="button">Copy opener</button>
+        </div>
+        <div class="lines" id="lines" aria-live="polite"></div>
+        <p class="copy-message visually-hidden" id="copy-message" role="status"></p>
+      </section>
+      <section class="evidence" aria-labelledby="evidence-heading">
+        <div class="evidence-header">
+          <h2 id="evidence-heading">Website evidence</h2>
+          <span class="source-count" id="source-count"></span>
+        </div>
+        <ul class="source-list" id="sources"></ul>
+      </section>
+    </div>
+    {% if repository_url %}
+    <footer class="source-footer">
+      <a href="{{ repository_url }}" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub (opens in a new tab)">View source on GitHub<span class="external-mark" aria-hidden="true">↗</span></a>
+    </footer>
+    {% endif %}
+  </main>
+  <script>
+    const form = document.getElementById("opener-form");
+    const website = document.getElementById("website");
+    const example = document.getElementById("example");
+    const generate = document.getElementById("generate");
+    const loading = document.getElementById("loading");
+    const errorBox = document.getElementById("error");
+    const results = document.getElementById("results");
+    const lines = document.getElementById("lines");
+    const sources = document.getElementById("sources");
+    const sourceCount = document.getElementById("source-count");
+    const copy = document.getElementById("copy");
+    const copyMessage = document.getElementById("copy-message");
+    let copyReset;
+
+    function resetCopyFeedback() {
+      clearTimeout(copyReset);
+      copy.textContent = "Copy opener";
+      copy.removeAttribute("data-copied");
+      copyMessage.textContent = "";
+      copyMessage.classList.add("visually-hidden");
+    }
+
+    function renderDraft(data) {
+      lines.textContent = data.lines.join("\n");
+      const pages = data.evidence.length;
+      const quotes = data.evidence.reduce((count, source) => count + source.quotes.length, 0);
+      sourceCount.textContent = `${pages} ${pages === 1 ? "page" : "pages"} · ${quotes} ${quotes === 1 ? "quote" : "quotes"}`;
+      sources.replaceChildren(...data.evidence.map((evidence) => {
+        const url = new URL(evidence.url);
+        if (url.protocol !== "https:" && url.protocol !== "http:") {
+          throw new Error("A website source could not be displayed.");
+        }
+        const item = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = url.href;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = evidence.title || url.host;
+        link.setAttribute("aria-label", `${link.textContent} (opens in a new tab)`);
+        const mark = document.createElement("span");
+        mark.className = "external-mark";
+        mark.setAttribute("aria-hidden", "true");
+        mark.textContent = "↗";
+        link.append(mark);
+        const address = document.createElement("span");
+        address.className = "source-address";
+        address.textContent = url.host + url.pathname;
+        item.append(link, address);
+        for (const quote of evidence.quotes) {
+          const text = document.createElement("blockquote");
+          text.textContent = "“" + quote + "”";
+          item.append(text);
+        }
+        return item;
+      }));
+      results.hidden = false;
+    }
+
+    example?.addEventListener("click", () => {
+      website.value = example.dataset.website;
+      website.focus();
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const value = website.value.trim();
+      if (!value || generate.disabled) return;
+
+      generate.disabled = true;
+      if (example) example.disabled = true;
+      website.readOnly = true;
+      results.hidden = true;
+      errorBox.hidden = true;
+      resetCopyFeedback();
+      loading.hidden = false;
+
+      try {
+        const response = await fetch("/api/opener", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({website: value})
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.message || "The generator couldn't complete this draft. Try again.");
+        }
+        renderDraft(data);
+      } catch (error) {
+        errorBox.textContent = error instanceof TypeError
+          ? "The connection was interrupted. Check your connection and try again."
+          : error.message;
+        errorBox.hidden = false;
+      } finally {
+        loading.hidden = true;
+        website.readOnly = false;
+        if (example) example.disabled = false;
+        generate.disabled = false;
+      }
+    });
+
+    copy.addEventListener("click", async () => {
+      const draft = lines.textContent;
+      try {
+        await navigator.clipboard.writeText(draft);
+        if (results.hidden || lines.textContent !== draft) return;
+        clearTimeout(copyReset);
+        copy.textContent = "✓ Copied";
+        copy.setAttribute("data-copied", "");
+        copyMessage.classList.add("visually-hidden");
+        copyMessage.textContent = "Opener copied.";
+        copyReset = setTimeout(resetCopyFeedback, 2000);
+      } catch {
+        if (results.hidden || lines.textContent !== draft) return;
+        resetCopyFeedback();
+        const range = document.createRange();
+        range.selectNodeContents(lines);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        copyMessage.textContent = "Opener selected. Use your keyboard to copy it.";
+        copyMessage.classList.remove("visually-hidden");
+      }
+    });
+  </script>
+</body>
+</html>
