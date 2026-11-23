@@ -1,11 +1,13 @@
 """Browser interface for the founder email opener."""
 
+import hashlib
+from hmac import compare_digest
 from ipaddress import ip_address
 import os
 import socket
 from urllib.parse import urlsplit
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, make_response, redirect, render_template, request, url_for
 from openai import OpenAIError
 
 from opener import draft_opener, model_client
@@ -16,14 +18,43 @@ app = Flask(__name__, static_folder=None)
 app.config["MAX_CONTENT_LENGTH"] = 4096
 
 
+def review_key() -> str:
+    return os.environ.get("OPENER_REVIEW_KEY", "").strip()
+
+
+def review_cookie(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def can_generate() -> bool:
+    key = review_key()
+    if not key:
+        return not os.environ.get("VERCEL")
+    cookie = request.cookies.get("opener_review", "")
+    return compare_digest(cookie.encode(), review_cookie(key).encode())
+
+
 @app.get("/")
 def index():
+    key = review_key()
+    provided_key = request.args.get("review", "")
+    if key and provided_key and compare_digest(provided_key.encode(), key.encode()):
+        response = redirect(url_for("index"), code=303)
+        response.set_cookie("opener_review", review_cookie(key), max_age=7 * 24 * 60 * 60,
+                            secure=True, httponly=True, samesite="Lax")
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
     repository_url = os.environ.get("OPENER_REPOSITORY_URL", "").strip()
-    return render_template(
+    response = make_response(render_template(
         "index.html",
         repository_url=repository_url if repository_url.startswith("https://github.com/") else "",
         example_website=os.environ.get("OPENER_EXAMPLE_WEBSITE", "").strip(),
-    )
+        can_generate=can_generate(),
+    ))
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
 
 
 def public_website(value: str) -> str:
@@ -42,6 +73,8 @@ def public_website(value: str) -> str:
 
 @app.post("/api/opener")
 def generate():
+    if not can_generate():
+        return jsonify(message="Open the reviewer link to enable drafting."), 403
     body = request.get_json(silent=True)
     value = body.get("website") if isinstance(body, dict) else None
     if not isinstance(value, str) or not value.strip() or len(value) > 2048:
@@ -54,7 +87,7 @@ def generate():
     except ValueError as error:
         return jsonify(message=str(error)), 400
 
-    site = collect(url, max_pages=7, timeout=20)
+    site = collect(url, max_pages=7, timeout=20, public_only=True)
     try:
         with model_client(api_key) as client:
             result = draft_opener(site, client)

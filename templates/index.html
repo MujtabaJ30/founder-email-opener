@@ -195,9 +195,10 @@
       </div>
       <div class="fields">
         <input id="website" name="website" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder="company.com" maxlength="2048" required>
-        <button class="generate" id="generate" type="submit">Generate opener</button>
+        <button class="generate" id="generate" type="submit"{% if not can_generate %} disabled{% endif %}>Generate opener</button>
       </div>
     </form>
+    {% if not can_generate %}<p class="feedback">Open the reviewer link to enable drafting.</p>{% endif %}
 
     <section class="feedback loading" id="loading" role="status" hidden>
       <span class="spinner" aria-hidden="true"></span>

@@ -5,7 +5,9 @@ import json
 import re
 from dataclasses import dataclass, field
 from heapq import heappop, heappush
+from ipaddress import ip_address
 from itertools import count
+import socket
 from time import monotonic
 from urllib.parse import unquote, urljoin, urlsplit, urlunsplit
 from xml.etree import ElementTree
@@ -36,6 +38,27 @@ WORKFLOW_PATH = re.compile(r"\b(?:import|export|migrat\w*|onboard\w*|activation|
 
 class RetrievalError(Exception):
     pass
+
+
+class PublicSiteAdapter(requests.adapters.HTTPAdapter):
+    def build_connection_pool_key_attributes(self, request, verify, cert=None):
+        host, tls = super().build_connection_pool_key_attributes(request, verify, cert)
+        hostname = host["host"]
+        port = host["port"] or (443 if host["scheme"] == "https" else 80)
+        try:
+            addresses = [ip_address(info[4][0]) for info in socket.getaddrinfo(
+                hostname, port, type=socket.SOCK_STREAM
+            )]
+        except OSError as error:
+            raise RetrievalError("Could not resolve a public address for this website.") from error
+        if not addresses or any(not address.is_global or address.is_multicast for address in addresses):
+            raise RetrievalError("This page does not resolve exclusively to public addresses.")
+        # Use the checked address for the socket and keep the site name for HTTP and TLS.
+        host["host"] = str(min(addresses, key=lambda address: address.version))
+        request.headers["Host"] = hostname
+        if host["scheme"] == "https":
+            tls.update(assert_hostname=hostname, server_hostname=hostname)
+        return host, tls
 
 
 @dataclass
@@ -220,7 +243,7 @@ def website_url(url: str) -> str:
     return canonical_url(url)
 
 
-def collect(url: str, max_pages: int, timeout: float, fetch=None) -> dict:
+def collect(url: str, max_pages: int, timeout: float, fetch=None, *, public_only: bool = False) -> dict:
     url = website_url(url)
     host = company_host(url)
     started = monotonic()
@@ -232,6 +255,11 @@ def collect(url: str, max_pages: int, timeout: float, fetch=None) -> dict:
     attempts = 0
     origin = url
     with requests.Session() as session:
+        if public_only:
+            session.trust_env = False
+            adapter = PublicSiteAdapter()
+            session.mount("http://", adapter)
+            session.mount("https://", adapter)
         session.headers["User-Agent"] = "OpenerResearch/0.1 (company website reader)"
         reader = fetch or read_page
         while queue and attempts < max_pages and monotonic() < deadline:

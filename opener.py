@@ -1,6 +1,7 @@
 """Draft a founder-email opener from a trusted company URL."""
 
 import argparse
+from base64 import b64decode
 import json
 import os
 from pathlib import Path
@@ -149,7 +150,13 @@ def draft_opener(website: dict, client: OpenAI, model: str = DEFAULT_MODEL) -> d
                 "reason": "The reader found no usable text on the website."}
 
     prompt_file = os.environ.get("OPENER_PROMPT_FILE", "").strip()
-    instructions = Path(prompt_file).read_text(encoding="utf-8") if prompt_file else INSTRUCTIONS
+    encoded_prompt = os.environ.get("OPENER_PROMPT_BASE64", "").strip()
+    if prompt_file:
+        instructions = Path(prompt_file).read_text(encoding="utf-8")
+    elif encoded_prompt:
+        instructions = b64decode(encoded_prompt, validate=True).decode("utf-8")
+    else:
+        instructions = INSTRUCTIONS
     started = monotonic()
     response = client.responses.create(
         model=model,

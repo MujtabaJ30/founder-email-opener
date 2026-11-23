@@ -18,5 +18,7 @@ To open the browser version locally, run `python app.py` and visit `http://127.0
 ### Optional configuration
 
 - `OPENER_PROMPT_FILE` points to a local UTF-8 prompt file for sender-specific drafting instructions. The app uses a general-purpose prompt by default. Keep sender details that are private in a local file outside the repository.
+- `OPENER_PROMPT_BASE64` accepts the same UTF-8 prompt encoded as base64 when deploying to a host. Store it as a server-side secret.
 - `OPENER_EXAMPLE_WEBSITE` adds a **Try an example** shortcut that fills in the configured public website address.
 - `OPENER_REPOSITORY_URL` adds a **View source on GitHub** link when set to the full GitHub repository URL.
+- `OPENER_REVIEW_KEY` gates hosted generation. Share the site URL with `?review=<key>` to enable drafting without an account. Use a long random server-side secret, and share that URL only with intended reviewers. Generation on Vercel stays disabled until a review key is configured.
